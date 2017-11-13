@@ -52,7 +52,7 @@ namespace ds2i {
         configuration()
         {
             fillvar("DS2I_K", k, 10);
-            fillvar("DS2I_BLOCK_SIZE", block_size, 5);
+            fillvar("DS2I_BLOCK_SIZE", block_size, 40);
             fillvar("DS2I_EPS1", eps1, 0.03);
             fillvar("DS2I_EPS2", eps2, 0.3);
             fillvar("DS2I_EPS3", eps3, 0.01);

@@ -74,6 +74,12 @@ target_link_libraries(queries
   FastPFor_lib
   )
 
+add_executable(trec_queries trec_queries.cpp)
+target_link_libraries(trec_queries
+  ${Boost_LIBRARIES}
+  FastPFor_lib
+  )
+
 
 add_executable(profile_queries profile_queries.cpp)
 target_link_libraries(profile_queries
