@@ -88,7 +88,7 @@ namespace ds2i {
             return results;
         }
     };
-
+        
     template<bool with_freqs>
     struct or_query {
 
@@ -247,6 +247,7 @@ namespace ds2i {
 
         template<typename Index>
         uint64_t operator()(Index const &index, term_id_vec const &terms) {
+        
             m_topk.clear();
             if (terms.empty()) return 0;
 
@@ -432,7 +433,7 @@ namespace ds2i {
                 }
             }
 
-            //    m_topk.finalize();
+            m_topk.finalize();
             return m_topk.topk().size();
         }
 
@@ -601,7 +602,9 @@ namespace ds2i {
                         }
                     }
 
-                } else {
+                } 
+                // BM SKip block
+                else {
 
 
                     uint64_t next;

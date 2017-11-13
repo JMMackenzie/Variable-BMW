@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unordered_map>
 
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -31,23 +32,32 @@ void op_perftest(Functor query_func, // XXX!!!
     using namespace ds2i;
 
     std::vector<double> query_times;
+    query_times.resize(queries.size());
 
     for (size_t run = 0; run <= runs; ++run) {
+        size_t arbitrary_id = 0;
         for (auto const &query: queries) {
             auto tick = get_time_usecs();
             uint64_t result = query_func(query);
             do_not_optimize_away(result);
             double elapsed = double(get_time_usecs() - tick);
             if (run != 0) { // first run is not timed
-                query_times.push_back(elapsed);
+              query_times[arbitrary_id] += elapsed;
             }
-
+            ++arbitrary_id;
         }
     }
 
+    // Take mean of the timings and dump per-query
+    for (size_t x = 0; x < query_times.size(); ++x) {
+      query_times[x] = query_times[x]/(runs-1);
+      std::cerr << x << ";" << (query_times[x] / 1000.0) << std::endl;
+    }
+
     if (false) {
+      size_t ind = 0;
         for (auto t: query_times) {
-            std::cout << (t / 1000) << std::endl;
+            std::cout << ++ind << ";" << (t / 1000) << std::endl;
         }
     } else {
         std::sort(query_times.begin(), query_times.end());
@@ -69,6 +79,8 @@ void op_perftest(Functor query_func, // XXX!!!
                 ("q50", q50)
                 ("q90", q90)
                 ("q95", q95);
+
+        
     }
 }
 
@@ -107,6 +119,7 @@ void perftest(const char *index_filename,
         succinct::mapper::map(wdata, md, succinct::mapper::map_flags::warmup);
     }
 
+ 
     uint64_t k = configuration::get().k;
     logger() << "Performing " << type << " queries" << std::endl;
     for (auto const &t: query_types) {

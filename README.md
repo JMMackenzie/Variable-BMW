@@ -1,3 +1,13 @@
+Changes in this fork
+====================
+* Supports conversion of [ATIRE](https://github.com/snapbug/atire) indexes to ds2i format
+* Supports conversion of [Indri](https://www.lemurproject.org/indri/) indexes to ds2i format
+* Output Results in TREC format
+
+To Do
+=====
+* Parse Queries using Dictionary
+
 ds2i
 ====
 
