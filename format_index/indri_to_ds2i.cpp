@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 
   // write dictionary
   {
-    std::cout << "Writing dictionary." << std::endl;
+    std::cout << "Writing dictionary and postings." << std::endl;
     const auto& index = (*state)[0];
     indri::index::VocabularyIterator* iter = index->vocabularyIterator();
     iter->startIteration();
@@ -85,11 +85,37 @@ int main(int argc, char **argv) {
     while( !iter->finished() ) {
       indri::index::DiskTermData* entry = iter->currentEntry();
       indri::index::TermData* termData = entry->termData;
-
+      uint32_t list_length = termData->corpus.documentCount;
       dict_file << termData->term << " " << j << " "
               << termData->corpus.documentCount << " "
               << termData->corpus.totalCount << " "
               <<  std::endl;
+
+      if (j % 1000000 == 0) {
+        std::cerr << "Processing term " << j << ", " << termData->term << std::endl;
+      }
+      // write inverted files
+      {
+        doc_file.write((char *)&list_length, sizeof(uint32_t));
+        freq_file.write((char *)&list_length, sizeof(uint32_t));
+ 
+        const auto& index = (*state)[0];
+        indri::index::DocListIterator* piter = index->docListIterator(termData->term);
+        piter->startIteration();
+
+        while( !piter->finished() ) {
+          indri::index::DocListIterator::DocumentData* doc = 
+            piter->currentEntry();
+          // Write
+          uint32_t doc_id = doc->document - 1;
+          uint32_t term_freq = doc->positions.size();
+          doc_file.write((char *)&doc_id, sizeof(uint32_t));
+          freq_file.write((char *)&term_freq, sizeof(uint32_t));
+
+          piter->nextEntry();
+        }
+        delete piter;
+      }
 
       iter->nextEntry();
       j++;
@@ -97,50 +123,6 @@ int main(int argc, char **argv) {
     delete iter;
   }
 
-
-
-  // write inverted files
-  {
-    uint64_t a = 0, b = 0;
-    std::vector<std::pair<uint64_t, uint64_t>> post; 
-    const auto& index = (*state)[0];
-    indri::index::DocListFileIterator* iter = index->docListFileIterator();
-    iter->startIteration();
-
-    std::cerr << "Writing postings lists ..." << std::endl;
-    while( !iter->finished() ) {
-      indri::index::DocListFileIterator::DocListData* entry = 
-        iter->currentEntry();
-      indri::index::TermData* termData = entry->termData;
-
-      entry->iterator->startIteration();
-      post.clear();
-
-      while( !entry->iterator->finished() ) {
-        indri::index::DocListIterator::DocumentData* doc = 
-          entry->iterator->currentEntry();
-
-        a = doc->document - 1;
-        b = doc->positions.size();
-        post.emplace_back(a,b);
-        entry->iterator->nextEntry();
-      }
-      
-      uint32_t list_length = post.size();
-      doc_file.write((char *)&list_length, sizeof(uint32_t));
-      freq_file.write((char *)&list_length, sizeof(uint32_t));
-
-      // Dump to file now
-      for (size_t cnt = 0; cnt < post.size(); ++cnt) {
-        uint32_t doc_id = post[cnt].first;
-        uint32_t term_freq = post[cnt].second;
-        doc_file.write((char *)&doc_id, sizeof(uint32_t));
-        freq_file.write((char *)&term_freq, sizeof(uint32_t));
-      }
-      iter->nextEntry();
-    }
-    delete iter;
-  }
   doc_file.close();
   freq_file.close();
   size_file.close();

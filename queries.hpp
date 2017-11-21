@@ -14,7 +14,26 @@ namespace ds2i {
     typedef uint32_t term_id_type;
     typedef std::vector<term_id_type> term_id_vec;
 
+    bool read_query(term_id_vec &ret, uint32_t &qid, std::istream &is = std::cin) {
+        ret.clear();
+        std::string line;
+        if (!std::getline(is, line)) return false;
+        std::istringstream iline(line);
+        term_id_type term_id;
+        bool first;
+        while (iline >> term_id) {
+            if (first) {
+              qid = term_id;
+              first = false;
+            }
+            ret.push_back(term_id);
+        }
+
+        return true;
+    }
+
     bool read_query(term_id_vec &ret, std::istream &is = std::cin) {
+        std::cerr << "Read Query [No ID]" << std::endl;
         ret.clear();
         std::string line;
         if (!std::getline(is, line)) return false;

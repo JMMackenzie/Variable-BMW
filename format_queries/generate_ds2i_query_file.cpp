@@ -41,10 +41,11 @@ int main(int argc, char **argv) {
     std::cerr << "Processing query ID = " << qry_id << std::endl;
     auto qry_content = query_str.substr(id_sep_pos+1);
     std::istringstream qry_content_stream(qry_content);
+    std::cout << qry_id;
     for(std::string qry_token; std::getline(qry_content_stream,qry_token,' ');) {
       auto id_itr = term_map.find(qry_token);
       if(id_itr != term_map.end()) {
-        std::cout << id_itr->second << " "; 
+        std::cout << " " << id_itr->second; 
       }
       else {
         std::cerr << "Error: Could not find term '" << qry_token 

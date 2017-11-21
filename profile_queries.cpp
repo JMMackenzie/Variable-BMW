@@ -14,7 +14,7 @@
 template <typename QueryOperator, typename IndexType>
 void op_profile(IndexType const& index,
                 QueryOperator const& query_op,
-                std::vector<ds2i::term_id_vec> const& queries)
+                std::vector<std::pair<uint32_t, ds2i::term_id_vec>> const& queries)
 {
     using namespace ds2i;
 
@@ -31,7 +31,7 @@ void op_profile(IndexType const& index,
                         logger() << i << " queries processed" << std::endl;
                     }
 
-                    query_op_copy(index, queries[i]);
+                    query_op_copy(index, queries[i].second);
                 }
             });
     }
@@ -51,7 +51,7 @@ struct add_profiling<ds2i::block_freq_index<BlockType, false>> {
 template <typename IndexType>
 void profile(const char* index_filename,
              const char* wand_data_filename,
-             std::vector<ds2i::term_id_vec> const& queries,
+             std::vector<std::pair<uint32_t,ds2i::term_id_vec>> const& queries,
              std::string const& type,
              std::string const& query_type)
 {
@@ -107,18 +107,19 @@ int main(int argc, const char** argv)
         args++;
     }
 
-    std::vector<term_id_vec> queries;
+    std::vector<std::pair<uint32_t, term_id_vec>> queries;
     term_id_vec q;
+    uint32_t qid;
     if (std::string(argv[args]) == "--file") {
         args++;
         args++;
         std::filebuf fb;
         if (fb.open(argv[args], std::ios::in)) {
             std::istream is(&fb);
-            while (read_query(q, is)) queries.push_back(q);
+            while (read_query(q, qid, is)) queries.emplace_back(qid, q);
         }
     } else {
-        while (read_query(q)) queries.push_back(q);
+        while (read_query(q, qid)) queries.emplace_back(qid, q);
     }
 
     if (false) {

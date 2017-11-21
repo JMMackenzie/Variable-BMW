@@ -25,25 +25,24 @@ using namespace ds2i;
 
 template<typename Functor>
 void op_dump_trec(Functor query_func, // XXX!!!
-                 std::vector<ds2i::term_id_vec> const &queries,
+                 std::vector<std::pair<uint32_t, ds2i::term_id_vec>> const &queries,
                  std::vector<std::string>& id_map,
+                 std::string const &query_type,
                  std::ofstream& output) {
     using namespace ds2i;
     
     // Run queries
-    size_t arbitrary_id = 1;
     for (auto const &query: queries) {
       std::vector<std::pair<float, uint64_t>> top_k;
-      top_k = query_func(query);
+      top_k = query_func(query.second);
       for (size_t n = 0; n < top_k.size(); ++n) {
-        output << arbitrary_id << " "
+        output << query.first << " "
                << "Q0" << " "
                << id_map[top_k[n].second] << " "
                << n+1 << " "
                << top_k[n].first << " "
-               << "VBMW" << std::endl; 
+               << query_type << std::endl; 
       }
-      ++arbitrary_id;
     }
 
 }
@@ -51,11 +50,12 @@ void op_dump_trec(Functor query_func, // XXX!!!
 template<typename IndexType, typename WandType>
 void effectivenesstest(const char *index_filename,
               const char *wand_data_filename,
-              std::vector<ds2i::term_id_vec> const &queries,
+              std::vector<std::pair<uint32_t, ds2i::term_id_vec>> const &queries,
               std::string const &type,
               std::string const &query_type,
               const char *map_filename,
-              const char *output_filename) {
+              const char *output_filename,
+              const uint64_t m_k) {
     using namespace ds2i;
     IndexType index;
     logger() << "Loading index from " << index_filename << std::endl;
@@ -74,7 +74,7 @@ void effectivenesstest(const char *index_filename,
     logger() << "Warming up posting lists" << std::endl;
     std::unordered_set<term_id_type> warmed_up;
     for (auto const &q: queries) {
-        for (auto t: q) {
+        for (auto t: q.second) {
             if (!warmed_up.count(t)) {
                 index.warmup(t);
                 warmed_up.insert(t);
@@ -94,7 +94,11 @@ void effectivenesstest(const char *index_filename,
 
     std::ofstream output_handle(output_filename);
  
-    uint64_t k = configuration::get().k;
+    uint64_t k = m_k;
+    if (k == 0) {
+      k = configuration::get().k;
+    }
+    
     logger() << "Performing " << type << " queries" << std::endl;
     for (auto const &t: query_types) {
         logger() << "Query type: " << t << std::endl;
@@ -130,7 +134,7 @@ std::function<std::vector<std::pair<float, uint64_t>>(ds2i::term_id_vec)> query_
             logger() << "Unsupported query type: " << t << std::endl;
             break;
         }
-        op_dump_trec(query_fun, queries, doc_map, output_handle);
+        op_dump_trec(query_fun, queries, doc_map, t, output_handle);
     }
 
 
@@ -155,8 +159,9 @@ int main(int argc, const char **argv) {
     const char *query_filename = nullptr;
     const char *map_filename = nullptr;
     const char *out_filename = nullptr;
+    uint64_t m_k = 0;
     bool compressed = false;
-    std::vector<term_id_vec> queries;
+    std::vector<std::pair<uint32_t, term_id_vec>> queries;
 
     for (int i = 4; i < argc; ++i) {
         std::string arg = argv[i];
@@ -180,6 +185,11 @@ int main(int argc, const char **argv) {
         if (arg == "--output") {
           out_filename = argv[++i];
         }
+
+        if (arg == "--k") {
+          m_k = std::stoull(argv[++i]);
+        }
+ 
     }
 
     if (out_filename == nullptr || map_filename == nullptr) {
@@ -189,14 +199,15 @@ int main(int argc, const char **argv) {
     }
 
     term_id_vec q;
+    uint32_t qid;
     if(query_filename){
         std::filebuf fb;
         if (fb.open(query_filename, std::ios::in)) {
             std::istream is(&fb);
-            while (read_query(q, is)) queries.push_back(q);
+            while (read_query(q, qid, is)) queries.emplace_back(qid, q);
         }
     } else {
-        while (read_query(q)) queries.push_back(q);
+        while (read_query(q, qid)) queries.emplace_back(qid, q);
     }
 
     /**/
@@ -205,10 +216,10 @@ int main(int argc, const char **argv) {
         } else if (type == BOOST_PP_STRINGIZE(T)) {                                 \
             if (compressed) {                                                       \
                  effectivenesstest<BOOST_PP_CAT(T, _index), wand_uniform_index>              \
-                 (index_filename, wand_data_filename, queries, type, query_type, map_filename, out_filename);   \
+                 (index_filename, wand_data_filename, queries, type, query_type, map_filename, out_filename, m_k);   \
             } else {                                                                \
                 effectivenesstest<BOOST_PP_CAT(T, _index), wand_raw_index>                   \
-                (index_filename, wand_data_filename, queries, type, query_type, map_filename, out_filename);    \
+                (index_filename, wand_data_filename, queries, type, query_type, map_filename, out_filename, m_k);    \
             }                                                                       \
     /**/
 
