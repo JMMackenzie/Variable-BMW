@@ -20,11 +20,12 @@ namespace ds2i {
         if (!std::getline(is, line)) return false;
         std::istringstream iline(line);
         term_id_type term_id;
-        bool first;
+        bool first = true;
         while (iline >> term_id) {
             if (first) {
               qid = term_id;
               first = false;
+              continue;
             }
             ret.push_back(term_id);
         }
